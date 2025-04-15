@@ -3,9 +3,12 @@
 #![allow(non_upper_case_globals)]
 #![allow(improper_ctypes)]
 
-use std::ptr::null;
+use std::ptr::{null, null_mut};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+fn get_validation_layers() -> Vec<String> {
+    vec!["VK_LAYER_KHRONOS_validation".to_string()]
+}
 pub fn vk_destroy_instance(instance: VkInstance) {
     unsafe {
         vkDestroyInstance(instance, null());
@@ -25,6 +28,10 @@ pub fn vk_create_instance(
     extension_count: u32,
     extensions: *const *const i8,
 ) -> Result<VkInstance, VulkanError> {
+    if let Err(err) = vk_check_validation_layer_support(&get_validation_layers()) {
+        return Err(err);
+    }
+
     let mut instance: VkInstance = std::ptr::null_mut();
     let c_string_app_name = std::ffi::CString::new(app_name).unwrap();
     let c_string_engine_name = std::ffi::CString::new("No Engine").unwrap();
@@ -43,8 +50,8 @@ pub fn vk_create_instance(
         pNext: null(),
         flags: 0,
         pApplicationInfo: &app_info,
-        enabledLayerCount: 0,
-        ppEnabledLayerNames: null(),
+        enabledLayerCount: get_validation_layers().len() as u32,
+        ppEnabledLayerNames: get_validation_layers().first().unwrap().as_ptr(),
         enabledExtensionCount: extension_count,
         ppEnabledExtensionNames: extensions,
     };
@@ -57,7 +64,40 @@ pub fn vk_create_instance(
     }
 }
 
+pub fn vk_check_validation_layer_support(
+    validationLayers: &Vec<String>,
+) -> Result<(), VulkanError> {
+    let mut layerCount: u32 = 0;
+    unsafe {
+        vkEnumerateInstanceLayerProperties(&mut layerCount, null_mut());
+        let mut availableLayers: Vec<VkLayerProperties> = Vec::with_capacity(layerCount as usize);
+        vkEnumerateInstanceLayerProperties(&mut layerCount, availableLayers.as_mut_ptr());
+        for layer in validationLayers {
+            let mut layer_found = false;
+
+            for layerProperties in &availableLayers {
+                if i8_array_to_string(layerProperties.layerName) == *layer {
+                    layer_found = true;
+                    break;
+                }
+            }
+
+            if !layer_found {
+                return Err(VulkanError::ValidationLayersNotAvailable);
+            }
+        }
+        Ok(())
+    }
+}
+
+fn i8_array_to_string(buf: [i8; 256]) -> String {
+    let bytes: &[u8] = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u8, buf.len()) };
+    let nul_terminated = bytes.split(|&b| b == 0).next().unwrap_or(&[]);
+    String::from_utf8_lossy(nul_terminated).to_string()
+}
+
 #[derive(Debug)]
 pub enum VulkanError {
     InstanceCreationFailed,
+    ValidationLayersNotAvailable,
 }
