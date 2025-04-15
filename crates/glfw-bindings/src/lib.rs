@@ -6,6 +6,12 @@
 use std::{ffi::CString, ptr::null_mut};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+pub fn glfw_get_required_instance_extensions() -> (u32, *mut *const i8) {
+    let mut count = 0;
+    let extensions = unsafe { glfwGetRequiredInstanceExtensions(&mut count) };
+    (count, extensions)
+}
+
 pub fn glfw_cleanup(window: *mut GLFWwindow) {
     unsafe {
         glfwDestroyWindow(window);

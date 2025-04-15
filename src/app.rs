@@ -1,20 +1,26 @@
 use glfw_bindings::{
-    GLFWwindow, glfw_cleanup, glfw_create_window, glfw_init_no_api, glfw_poll_events,
-    glfw_window_should_close,
+    GLFWwindow, glfw_cleanup, glfw_create_window, glfw_get_required_instance_extensions,
+    glfw_init_no_api, glfw_poll_events, glfw_window_should_close,
 };
+use vulkan_bindings::{VkInstance_T, vk_create_instance, vk_destroy_instance};
 
 pub struct App {
     window: Option<*mut GLFWwindow>,
+    instance: Option<*mut VkInstance_T>,
 }
 
 impl Default for App {
     fn default() -> Self {
-        Self { window: None }
+        Self {
+            window: None,
+            instance: None,
+        }
     }
 }
 
 impl App {
     pub fn run(self: &mut Self) {
+        self.init_vulkan();
         self.init_window();
         self.main_loop();
         self.cleanup();
@@ -41,6 +47,19 @@ impl App {
             self.window
                 .expect("Cant start cleanup without initializing"),
         );
+        vk_destroy_instance(self.instance.unwrap());
+    }
+
+    fn init_vulkan(self: &mut Self) {
+        let (count, extensions) = glfw_get_required_instance_extensions();
+
+        let instance = match vk_create_instance("Hello Triangle", count, extensions) {
+            Ok(instance) => instance,
+            Err(err) => {
+                panic!("Could not create vulkan instance {:?}", err)
+            }
+        };
+        self.instance = Some(instance)
     }
 }
 
