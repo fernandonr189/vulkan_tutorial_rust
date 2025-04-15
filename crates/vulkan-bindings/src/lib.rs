@@ -4,7 +4,7 @@
 #![allow(improper_ctypes)]
 
 use std::{
-    ffi::CString,
+    ffi::{CString, c_char},
     ptr::{null, null_mut},
 };
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -46,13 +46,20 @@ pub fn vk_create_instance(
         apiVersion: vk_make_api_version(0, 1, 0, 0),
     };
 
+    let layer_name_ptrs: Vec<*const c_char> =
+        validation_layers.iter().map(|s| s.as_ptr()).collect();
+
     let instance_info = VkInstanceCreateInfo {
         sType: VkStructureType_VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         pNext: null(),
         flags: 0,
         pApplicationInfo: &app_info,
-        enabledLayerCount: 0,
-        ppEnabledLayerNames: null(),
+        enabledLayerCount: layer_name_ptrs.len() as u32,
+        ppEnabledLayerNames: if layer_name_ptrs.is_empty() {
+            null()
+        } else {
+            layer_name_ptrs.as_ptr()
+        },
         enabledExtensionCount: extension_count,
         ppEnabledExtensionNames: extensions,
     };
@@ -86,11 +93,6 @@ pub fn vk_check_validation_layer_support(
             let mut layer_found = false;
 
             for layerProperties in &availableLayers {
-                println!(
-                    "Comparing '{:?}' '{:?}'",
-                    i8_array_to_string(layerProperties.layerName),
-                    *layer
-                );
                 if i8_array_to_string(layerProperties.layerName) == *layer {
                     layer_found = true;
                     break;
