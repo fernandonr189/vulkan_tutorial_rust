@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rustc-link-lib=dylib=glfw");
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
         .generate()

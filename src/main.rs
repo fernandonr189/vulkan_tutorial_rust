@@ -1,3 +1,6 @@
+mod app;
+
 fn main() {
-    println!("Hello, world!");
+    let mut app = app::App::default();
+    app.run();
 }
