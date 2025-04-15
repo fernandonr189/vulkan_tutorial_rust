@@ -4,7 +4,9 @@ use glfw_bindings::{
     GLFWwindow, glfw_cleanup, glfw_create_window, glfw_get_required_instance_extensions,
     glfw_init_no_api, glfw_poll_events, glfw_window_should_close,
 };
-use vulkan_bindings::{VkInstance_T, vk_create_instance, vk_destroy_instance};
+use vulkan_bindings::{
+    VkInstance_T, vk_create_instance, vk_destroy_instance, vk_get_physical_device,
+};
 
 pub struct App {
     window: Option<*mut GLFWwindow>,
@@ -69,7 +71,16 @@ impl App {
                 panic!("Could not create vulkan instance {:?}", err)
             }
         };
-        self.instance = Some(instance)
+        self.instance = Some(instance);
+        self.get_physical_device();
+    }
+
+    fn get_physical_device(self: &mut Self) {
+        if let Some(instance) = self.instance {
+            vk_get_physical_device(instance);
+        } else {
+            panic!("Must get instance first!")
+        }
     }
 
     fn get_validation_layers(self: &mut Self) {
