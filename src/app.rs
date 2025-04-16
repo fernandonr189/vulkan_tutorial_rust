@@ -6,7 +6,7 @@ use glfw_bindings::{
 };
 use vulkan_bindings::{
     VkDevice_T, VkInstance_T, VkPhysicalDevice_T, VkQueue_T, vk_create_instance,
-    vk_create_logical_device, vk_destroy_instance, vk_get_physical_device,
+    vk_create_logical_device, vk_destroy_instance, vk_get_device_queue, vk_get_physical_device,
 };
 
 pub struct App {
@@ -85,6 +85,7 @@ impl App {
         self.instance = Some(instance);
         self.get_physical_device();
         self.create_logical_device();
+        self.get_device_queue();
     }
 
     fn get_physical_device(self: &mut Self) {
@@ -113,6 +114,18 @@ impl App {
             };
         } else {
             panic!("Must get physical device first!")
+        }
+    }
+
+    fn get_device_queue(self: &mut Self) {
+        if let Some(physical_device) = self.physical_device {
+            if let Some(logical_device) = self.logical_device {
+                self.graphics_queue = Some(vk_get_device_queue(physical_device, logical_device));
+            } else {
+                panic!("Must get logical device first!")
+            }
+        } else {
+            panic!("Must get logical device first!")
         }
     }
 

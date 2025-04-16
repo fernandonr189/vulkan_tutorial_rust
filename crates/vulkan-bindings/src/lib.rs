@@ -16,6 +16,15 @@ pub fn vk_destroy_instance(instance: VkInstance, device: VkDevice) {
     }
 }
 
+pub fn vk_get_device_queue(physical_device: VkPhysicalDevice, device: VkDevice) -> VkQueue {
+    let indices = vk_find_queue_families(physical_device).unwrap();
+    unsafe {
+        let mut queue: VkQueue = std::mem::zeroed();
+        vkGetDeviceQueue(device, indices, 0, &mut queue);
+        queue
+    }
+}
+
 pub fn vk_create_logical_device(
     device: *mut VkPhysicalDevice_T,
     validation_layers: &Vec<CString>,
