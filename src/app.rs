@@ -37,10 +37,6 @@ impl App {
         self.init_window();
         self.main_loop();
         self.cleanup();
-        loop {
-            println!("Running...");
-            sleep(Duration::from_millis(1000));
-        }
     }
     fn init_window(self: &mut Self) {
         glfw_init_no_api();
