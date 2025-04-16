@@ -23,6 +23,27 @@ fn vk_make_api_version(variant: u32, major: u32, minor: u32, patch: u32) -> u32 
     (variant << 29) | (major << 22) | (minor << 12) | patch
 }
 
+fn vk_find_queue_families(device: *mut VkPhysicalDevice_T) -> Result<u32, VulkanError> {
+    let mut queue_family_count: u32 = 0;
+    unsafe {
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &mut queue_family_count, null_mut());
+        let mut queue_families: Vec<VkQueueFamilyProperties> =
+            vec![std::mem::zeroed(); queue_family_count as usize];
+        vkGetPhysicalDeviceQueueFamilyProperties(
+            device,
+            &mut queue_family_count,
+            queue_families.as_mut_ptr(),
+        );
+
+        for (i, queue_family) in queue_families.iter().enumerate() {
+            if queue_family.queueFlags & VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT != 0 {
+                return Ok(i as u32);
+            }
+        }
+        Err(VulkanError::NoQueueFamilyIndices)
+    }
+}
+
 pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
     let mut device_count: u32 = 0;
     let mut physical_device: VkPhysicalDevice = null_mut();
@@ -34,17 +55,15 @@ pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
         let mut devices: Vec<VkPhysicalDevice> = vec![null_mut(); device_count as usize];
         vkEnumeratePhysicalDevices(instance, &mut device_count, devices.as_mut_ptr());
 
-        // TODO check this part
-
         let mut best_index = 0;
         let mut index = 0;
         let mut highest_score = 0;
         for device in devices.iter() {
-            let device_info = get_device_info(*device);
-            if !is_device_suitable(&device_info) {
+            if !is_device_suitable(*device) {
                 index += 1;
                 continue;
             }
+            let device_info = get_device_info(*device);
             let score = rate_device_suitability(&device_info.properties);
             if score > highest_score {
                 highest_score = score;
@@ -52,10 +71,10 @@ pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
             }
             index += 1;
         }
-
         physical_device = devices[best_index];
-
-        if physical_device.is_null() {
+        //let selected_device_info = get_device_info(physical_device);
+        //selected_device_info.print_info();
+        if !is_device_suitable(physical_device) {
             panic!("Failed to find a suitable vulkan device");
         }
     }
@@ -78,7 +97,7 @@ struct VkDeviceInfo {
 
 #[allow(dead_code)]
 impl VkDeviceInfo {
-    fn print_info(self: Self) {
+    fn print_info(self: &Self) {
         println!("Device properties: {:?}", self.properties);
         println!("Device features: {:?}", self.features);
     }
@@ -101,9 +120,17 @@ fn get_device_info(device: *mut VkPhysicalDevice_T) -> VkDeviceInfo {
     }
 }
 
-fn is_device_suitable(device_info: &VkDeviceInfo) -> bool {
-    device_info.properties.deviceType == VkPhysicalDeviceType_VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-        && device_info.features.geometryShader == 1
+fn is_device_suitable(device: *mut VkPhysicalDevice_T) -> bool {
+    match vk_find_queue_families(device) {
+        Ok(_) => {
+            return true;
+            let device_info = get_device_info(device);
+            device_info.properties.deviceType
+                == VkPhysicalDeviceType_VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+                && device_info.features.geometryShader == 1
+        }
+        Err(_) => false,
+    }
 }
 
 pub fn vk_create_instance(
@@ -194,4 +221,5 @@ fn i8_array_to_string(buf: [i8; 256]) -> CString {
 pub enum VulkanError {
     InstanceCreationFailed,
     ValidationLayersNotAvailable,
+    NoQueueFamilyIndices,
 }
