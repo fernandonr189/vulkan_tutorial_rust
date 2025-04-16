@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::{ffi::CString, thread::sleep, time::Duration};
 
 use glfw_bindings::{
     GLFWwindow, glfw_cleanup, glfw_create_window, glfw_get_required_instance_extensions,
@@ -27,9 +27,13 @@ impl Default for App {
 impl App {
     pub fn run(self: &mut Self) {
         self.init_vulkan();
-        self.init_window();
-        self.main_loop();
-        self.cleanup();
+        //self.init_window();
+        //self.main_loop();
+        //self.cleanup();
+        loop {
+            println!("Running...");
+            sleep(Duration::from_millis(1000));
+        }
     }
     fn init_window(self: &mut Self) {
         glfw_init_no_api();
@@ -49,10 +53,10 @@ impl App {
     }
 
     fn cleanup(self: &mut Self) {
-        glfw_cleanup(
-            self.window
-                .expect("Cant start cleanup without initializing"),
-        );
+        //glfw_cleanup(
+        //    self.window
+        //        .expect("Cant start cleanup without initializing"),
+        //);
         vk_destroy_instance(self.instance.unwrap());
     }
 

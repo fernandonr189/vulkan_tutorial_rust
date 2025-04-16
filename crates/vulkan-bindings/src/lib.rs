@@ -161,15 +161,8 @@ pub fn vk_check_validation_layer_support(
     let mut layerCount: u32 = 0;
     unsafe {
         vkEnumerateInstanceLayerProperties(&mut layerCount, null_mut());
-        let mut availableLayers: Vec<VkLayerProperties> = vec![
-            VkLayerProperties {
-                layerName: [0; 256],
-                specVersion: 0,
-                implementationVersion: 0,
-                description: [0; 256],
-            };
-            layerCount as usize
-        ];
+        let mut availableLayers: Vec<VkLayerProperties> =
+            vec![std::mem::zeroed(); layerCount as usize];
 
         vkEnumerateInstanceLayerProperties(&mut layerCount, availableLayers.as_mut_ptr());
         for layer in validationLayers {
