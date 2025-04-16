@@ -5,13 +5,17 @@ use glfw_bindings::{
     glfw_init_no_api, glfw_poll_events, glfw_window_should_close,
 };
 use vulkan_bindings::{
-    VkInstance_T, vk_create_instance, vk_destroy_instance, vk_get_physical_device,
+    VkDevice_T, VkInstance_T, VkPhysicalDevice_T, VkQueue_T, vk_create_instance,
+    vk_create_logical_device, vk_destroy_instance, vk_get_physical_device,
 };
 
 pub struct App {
     window: Option<*mut GLFWwindow>,
     instance: Option<*mut VkInstance_T>,
     validation_layers: Option<Vec<CString>>,
+    physical_device: Option<*mut VkPhysicalDevice_T>,
+    logical_device: Option<*mut VkDevice_T>,
+    graphics_queue: Option<*mut VkQueue_T>,
 }
 
 impl Default for App {
@@ -20,6 +24,9 @@ impl Default for App {
             window: None,
             instance: None,
             validation_layers: None,
+            physical_device: None,
+            logical_device: None,
+            graphics_queue: None,
         }
     }
 }
@@ -57,7 +64,7 @@ impl App {
         //    self.window
         //        .expect("Cant start cleanup without initializing"),
         //);
-        vk_destroy_instance(self.instance.unwrap());
+        vk_destroy_instance(self.instance.unwrap(), self.logical_device.unwrap());
     }
 
     fn init_vulkan(self: &mut Self) {
@@ -77,13 +84,35 @@ impl App {
         };
         self.instance = Some(instance);
         self.get_physical_device();
+        self.create_logical_device();
     }
 
     fn get_physical_device(self: &mut Self) {
         if let Some(instance) = self.instance {
-            vk_get_physical_device(instance);
+            self.physical_device = match vk_get_physical_device(instance) {
+                Ok(physical_device) => Some(physical_device),
+                Err(err) => {
+                    panic!("Could not get physical device {:?}", err)
+                }
+            };
         } else {
             panic!("Must get instance first!")
+        }
+    }
+
+    fn create_logical_device(self: &mut Self) {
+        if let Some(physical_device) = self.physical_device {
+            self.logical_device = match vk_create_logical_device(
+                physical_device,
+                &self.validation_layers.as_mut().unwrap(),
+            ) {
+                Ok(logical_device) => Some(logical_device),
+                Err(err) => {
+                    panic!("Could not create logical device {:?}", err)
+                }
+            };
+        } else {
+            panic!("Must get physical device first!")
         }
     }
 

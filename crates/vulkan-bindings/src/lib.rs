@@ -9,9 +9,48 @@ use std::{
 };
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-pub fn vk_destroy_instance(instance: VkInstance) {
+pub fn vk_destroy_instance(instance: VkInstance, device: VkDevice) {
     unsafe {
         vkDestroyInstance(instance, null());
+        vkDestroyDevice(device, null());
+    }
+}
+
+pub fn vk_create_logical_device(
+    device: *mut VkPhysicalDevice_T,
+    validation_layers: &Vec<CString>,
+) -> Result<VkDevice, VulkanError> {
+    let queue_family_index = vk_find_queue_families(device);
+    let queue_priority = 1.0;
+    unsafe {
+        let mut vulkan_device: VkDevice = std::mem::zeroed();
+        let mut device_queue_create_info: VkDeviceQueueCreateInfo = std::mem::zeroed();
+        device_queue_create_info.sType = VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        device_queue_create_info.queueFamilyIndex = queue_family_index.unwrap();
+        device_queue_create_info.pQueuePriorities = &queue_priority;
+        device_queue_create_info.queueCount = 1;
+
+        let layer_name_ptrs: Vec<*const c_char> =
+            validation_layers.iter().map(|s| s.as_ptr()).collect();
+
+        let mut device_create_info: VkDeviceCreateInfo = std::mem::zeroed();
+        let mut _device_features: VkPhysicalDeviceFeatures = std::mem::zeroed();
+        device_create_info.sType = VkStructureType_VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        device_create_info.pQueueCreateInfos = &device_queue_create_info;
+        device_create_info.queueCreateInfoCount = 1;
+        device_create_info.pEnabledFeatures = &_device_features;
+        device_create_info.enabledExtensionCount = 0;
+        device_create_info.enabledLayerCount = layer_name_ptrs.len() as u32;
+        device_create_info.ppEnabledLayerNames = if layer_name_ptrs.is_empty() {
+            null()
+        } else {
+            layer_name_ptrs.as_ptr()
+        };
+
+        match vkCreateDevice(device, &device_create_info, null(), &mut vulkan_device) {
+            VkResult_VK_SUCCESS => Ok(vulkan_device),
+            _ => Err(VulkanError::LogicalDeviceCreationFailed),
+        }
     }
 }
 
@@ -44,8 +83,9 @@ fn vk_find_queue_families(device: *mut VkPhysicalDevice_T) -> Result<u32, Vulkan
     }
 }
 
-pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
+pub fn vk_get_physical_device(instance: VkInstance) -> Result<VkPhysicalDevice, VulkanError> {
     let mut device_count: u32 = 0;
+    #[allow(unused_assignments)]
     let mut physical_device: VkPhysicalDevice = null_mut();
     unsafe {
         vkEnumeratePhysicalDevices(instance, &mut device_count, null_mut());
@@ -75,10 +115,10 @@ pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
         //let selected_device_info = get_device_info(physical_device);
         //selected_device_info.print_info();
         if !is_device_suitable(physical_device) {
-            panic!("Failed to find a suitable vulkan device");
+            return Err(VulkanError::PhysicalDeviceCreationFailed);
         }
     }
-    physical_device
+    return Ok(physical_device);
 }
 
 fn rate_device_suitability(device_properties: &VkPhysicalDeviceProperties) -> u32 {
@@ -219,6 +259,8 @@ fn i8_array_to_string(buf: [i8; 256]) -> CString {
 
 #[derive(Debug)]
 pub enum VulkanError {
+    LogicalDeviceCreationFailed,
+    PhysicalDeviceCreationFailed,
     InstanceCreationFailed,
     ValidationLayersNotAvailable,
     NoQueueFamilyIndices,
