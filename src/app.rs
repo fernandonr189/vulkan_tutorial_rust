@@ -34,9 +34,9 @@ impl Default for App {
 impl App {
     pub fn run(self: &mut Self) {
         self.init_vulkan();
-        //self.init_window();
-        //self.main_loop();
-        //self.cleanup();
+        self.init_window();
+        self.main_loop();
+        self.cleanup();
         loop {
             println!("Running...");
             sleep(Duration::from_millis(1000));
@@ -60,10 +60,10 @@ impl App {
     }
 
     fn cleanup(self: &mut Self) {
-        //glfw_cleanup(
-        //    self.window
-        //        .expect("Cant start cleanup without initializing"),
-        //);
+        glfw_cleanup(
+            self.window
+                .expect("Cant start cleanup without initializing"),
+        );
         vk_destroy_instance(self.instance.unwrap(), self.logical_device.unwrap());
     }
 

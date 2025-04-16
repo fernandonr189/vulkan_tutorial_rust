@@ -172,7 +172,6 @@ fn get_device_info(device: *mut VkPhysicalDevice_T) -> VkDeviceInfo {
 fn is_device_suitable(device: *mut VkPhysicalDevice_T) -> bool {
     match vk_find_queue_families(device) {
         Ok(_) => {
-            return true;
             let device_info = get_device_info(device);
             device_info.properties.deviceType
                 == VkPhysicalDeviceType_VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
