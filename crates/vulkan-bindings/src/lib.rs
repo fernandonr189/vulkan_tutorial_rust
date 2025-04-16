@@ -4,7 +4,6 @@
 #![allow(improper_ctypes)]
 
 use std::{
-    collections::HashMap,
     ffi::{CString, c_char},
     ptr::{null, null_mut},
 };
@@ -34,6 +33,8 @@ pub fn vk_get_physical_device(instance: VkInstance) -> VkPhysicalDevice {
         }
         let mut devices: Vec<VkPhysicalDevice> = vec![null_mut(); device_count as usize];
         vkEnumeratePhysicalDevices(instance, &mut device_count, devices.as_mut_ptr());
+
+        // TODO check this part
 
         let mut best_index = 0;
         let mut index = 0;
@@ -75,6 +76,13 @@ struct VkDeviceInfo {
     pub features: VkPhysicalDeviceFeatures,
 }
 
+#[allow(dead_code)]
+impl VkDeviceInfo {
+    fn print_info(self: Self) {
+        println!("Device properties: {:?}", self.properties);
+        println!("Device features: {:?}", self.features);
+    }
+}
 impl Default for VkDeviceInfo {
     fn default() -> Self {
         Self {
